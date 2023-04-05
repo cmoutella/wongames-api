@@ -1,0 +1,37 @@
+{
+  "name": "wongames-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A Strapi application",
+  "scripts": {
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "build": "strapi build",
+    "strapi": "strapi"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "@strapi/plugin-graphql": "^4.9.0",
+    "@strapi/plugin-i18n": "4.9.0",
+    "@strapi/plugin-users-permissions": "4.9.0",
+    "@strapi/strapi": "4.9.0",
+    "fecha": "^4.2.3",
+    "i": "^0.3.7",
+    "jsdom": "^21.1.1",
+    "pg": "8.8.0",
+    "slugify": "^1.6.6",
+    "strapi-plugin-ckeditor5": "^2.1.1-rc.1",
+    "strapi-plugin-entity-relationship-chart": "^4.1.0"
+  },
+  "author": {
+    "name": "A Strapi developer"
+  },
+  "strapi": {
+    "uuid": "13d98d74-74b8-44f3-b6fe-8723d04691dc"
+  },
+  "engines": {
+    "node": ">=14.19.1 <=18.x.x",
+    "npm": ">=6.0.0"
+  },
+  "license": "MIT"
+}

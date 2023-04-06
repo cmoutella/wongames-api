@@ -39,22 +39,11 @@ async function getGameInfo (slug) {
   const dom = new JSDOM(body.data)
 
   const description = dom.window.document.querySelector('.description')
-  const releaseDate = dom.window.document.querySelector('div[content-summary-section-id="productDetails"] > .details > div:nth-child(4) > div.details__content.table__row-content')
-  const genre = dom.window.document.querySelector('div[content-summary-section-id="productDetails"] > .details > div:nth-child(1) > div.details__content.table__row-content')
-  const company = dom.window.document.querySelector('div[content-summary-section-id="productDetails"] > .details > div:nth-child(5) > div.details__content.table__row-content')
-
-  const companies = cleanArray(company.textContent.split('\n'))
-  const publisher = companies[companies.length - 1]
-  const developer = companies.filter(i => i !== publisher)
 
   return {
     rating: 'FREE',
     shortDescription: description.textContent.slice(0,160),
     description: description.innerHTML,
-    releaseDate: (cleanDate(releaseDate.textContent)[1]),
-    genres: cleanArray(genre.textContent.split('\n')),
-    publisher: publisher,
-    developer: developer
   }
 }
 
@@ -87,25 +76,16 @@ async function getManyToManyData (products) {
   const platforms = {}
 
   for (const product of products) {
-    const productData = product
-    if (productData?.url) {
-      let {genres, publisher, developer} = await getGameInfo(productData.url)
+    const {genres, developer, publisher,  supportedOperatingSystems} = product
 
-      genres?.forEach(genre =>
-        categories[genre] = true
-      )
-      developer && developer.forEach(dev => {
-        developers[dev] = true
-      })
-      publishers[publisher] = true
-    }
-
-    if (productData?.worksOn) {
-      const os = handleOperationalSystems(productData.worksOn)
-      os && os.forEach(item => {
-        platforms[item] = true
-      })
-    }
+    genres?.forEach(genre =>
+      categories[genre] = true
+    )
+    supportedOperatingSystems.forEach(item => {
+      platforms[item] = true
+    })
+    developers[developer] = true
+    publishers[publisher] = true
   }
 
   return {developers, publishers, categories, platforms}
@@ -132,33 +112,33 @@ async function getRelations(list, entity) {
   return relations
 }
 
-async function getPublisherRelation (name) {
-  const publisher = await getByName(name, 'publisher')
+async function getRelation (name, entity) {
+  const publisher = await getByName(name, entity)
 
-  return publisher?.id
+  return [publisher?.id]
 }
 
 async function compileGameData (product, productData) {
   const data = {
     name: product.title,
-    slug: slugify(product.url, { lower: true }),
+    slug: product.slug,
     short_description: productData?.shortDescription || '',
     description: productData?.description || '',
     price: product.price.amount,
-    release_date: productData?.releaseDate ? format(new Date(productData?.releaseDate), 'isoDate') : null,
-    rating: productData?.rating || '',
+    release_date: product.releaseDate ? format(new Date(product.releaseDate), 'isoDate') : null,
+    rating: productData?.rating || 'FREE',
     category: {
-      connect: await getRelations(productData?.genres, 'category')
+      connect: await getRelations(product.genres, 'category')
     },
-    developer: {connect: await getRelations(productData?.developer, 'developer')},
-    platform: {connect: await getRelations(handleOperationalSystems(product.worksOn), 'platform')},
-    publisher: {connect: await getPublisherRelation(productData?.publisher)},
+    platform: {connect: await getRelations(product.supportedOperatingSystems, 'platform')},
+    developer: {connect: await getRelation(product.developer, 'developer')},
+    publisher: {connect: await getRelation(product.publisher, 'publisher')},
   }
 
   return data
 }
 
-async function createGame(products) {
+async function createGames(products) {
   await Promise.all(products?.map(async product => {
     const item = await getByName(product.title, 'game')
 
@@ -176,19 +156,10 @@ async function createGame(products) {
 export default factories.createCoreService('api::game.game', ({strapi}) => ({
   async populate (params) {
     console.log('populating')
-    const gogApiUrl = `https://menu.gog.com/v1/store/configuration?locale=en-US&currency=BRL&country=BR`
-    const products = []
-    const {data} = await axios.get(gogApiUrl)
+    const gogApiUrl = `https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&sort=popularity`
+    const {data: {products}} = await axios.get(gogApiUrl)
 
-    for (const category in data) {
-      let cat = data[category]
-      if (!!cat.products) {
-        cat.products.forEach(product => products.push(product))
-      }
-    }
-
-    console.log(products.length)
-    await createGame([products[0], products[1], products[2], products[3], products[4], products[5], , products[6]])
+    await createGames([products[7], products[8], products[9], products[10], products[11], products[12]])
 
     console.log('/populating')
   }

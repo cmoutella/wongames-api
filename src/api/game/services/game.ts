@@ -5,6 +5,7 @@
 const axios = require('axios');
 const slugify = require('slugify');
 import { factories } from '@strapi/strapi';
+import { format } from 'fecha'
 
 function cleanArray (arr) {
   const cleaned = arr.map(item => item.trim())
@@ -122,6 +123,55 @@ async function createManyToManyData(products) {
 
 }
 
+async function getRelations(list, entity) {
+  const relations = await Promise.all(list.map(async item => {
+    const related = await getByName(item, entity)
+    return related?.id
+  }))
+
+  return relations
+}
+
+async function getPublisherRelation (name) {
+  const publisher = await getByName(name, 'publisher')
+
+  return publisher?.id
+}
+
+async function compileGameData (product, productData) {
+  const data = {
+    name: product.title,
+    slug: slugify(product.url, { lower: true }),
+    short_description: productData?.shortDescription || '',
+    description: productData?.description || '',
+    price: product.price.amount,
+    release_date: productData?.releaseDate ? format(new Date(productData?.releaseDate), 'isoDate') : null,
+    rating: productData?.rating || '',
+    category: {
+      connect: await getRelations(productData?.genres, 'category')
+    },
+    developer: {connect: await getRelations(productData?.developer, 'developer')},
+    platform: {connect: await getRelations(handleOperationalSystems(product.worksOn), 'platform')},
+    publisher: {connect: await getPublisherRelation(productData?.publisher)},
+  }
+
+  return data
+}
+
+async function createGame(products) {
+  await Promise.all(products?.map(async product => {
+    const item = await getByName(product.title, 'game')
+
+    if (!item) {
+      const gameData = product.url ? await getGameInfo(product.url) : null
+
+      const game = await strapi.entityService.create(`api::game.game`, {
+        data: await compileGameData(product, gameData),
+      });
+      return game
+    }
+  }))
+}
 
 export default factories.createCoreService('api::game.game', ({strapi}) => ({
   async populate (params) {
@@ -137,7 +187,8 @@ export default factories.createCoreService('api::game.game', ({strapi}) => ({
       }
     }
 
-    await createManyToManyData([products[0], products[1], products[2], products[3], products[4], products[5], , products[6]])
+    console.log(products.length)
+    await createGame([products[0], products[1], products[2], products[3], products[4], products[5], , products[6]])
 
     console.log('/populating')
   }
